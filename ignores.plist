@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<array>
+		<string>.cxx_destruct</string>
+		<string>numberOfSectionsInCollectionView:</string>
+      	<string>collectionView:didSelectItemAtIndexPath:</string>
+      	<string>collectionView:shouldSelectItemAtIndexPath:</string>
+      	<string>collectionView:layout:sizeForItemAtIndexPath:</string>
+      	<string>collectionView:layout:referenceSizeForFooterInSection:</string>
+      	<string>collectionView:viewForSupplementaryElementOfKind:atIndexPath:</string>
+      	<string>tableView:*</string>
+	</array>
+	<key>class</key>
+	<array>
+		<string>AppDelegate</string>
+		<string>*AppDelegate</string>
+	</array>
+</dict>
+</plist>
