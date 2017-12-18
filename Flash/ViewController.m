@@ -9,6 +9,16 @@
 #import "ViewController.h"
 #import "symbolModel.h"
 
+#define PathFlag @"# Path:"
+#define ObjectFlag @"# Object files:"
+#define SectionsFlag @"# Sections:"
+#define SymbolsFlag @"# Symbols:"
+#define IvarFlag @"_OBJC_IVAR_$_"
+#define BlockFlag @"_block_invoke"
+#define LinkMapFile @"LinkMap.txt"
+#define IgnoresFile @"ignores.plist"
+#define WhitelistFile @"whitelist.plist"
+
 static BOOL stastic_0 = NO;
 static BOOL stastic_1 = NO;
 static BOOL stastic_2 = NO;
@@ -21,7 +31,6 @@ static BOOL stastic_4 = NO;
 @property (unsafe_unretained) IBOutlet NSTextView *contentTextView;
 
 @property (nonatomic,strong)NSURL *ChooseLinkMapFileURL;
-@property (nonatomic,strong)NSString *linkMapContent;
 
 @property (nonatomic,strong)NSURL *appFileURL;
 @property (nonatomic,strong)NSURL *ignoreFileURL;
@@ -34,6 +43,7 @@ static BOOL stastic_4 = NO;
 @property (nonatomic) NSString *result;
 @property (nonatomic) NSDictionary *ignores;
 @property (nonatomic) NSArray *whitelist;
+@property (nonatomic) NSDictionary *libaryClass;
 
 @end
 
@@ -43,6 +53,7 @@ static BOOL stastic_4 = NO;
     [super viewDidLoad];
     // Do any additional setup after loading the view.
 }
+
 - (IBAction)option_0:(NSButton *)sender {
     stastic_0 = sender.state == NSControlStateValueOn;
 }
@@ -55,13 +66,8 @@ static BOOL stastic_4 = NO;
 - (IBAction)option_3:(NSButton *)sender {
     stastic_4 = sender.state == NSControlStateValueOn;
 }
-- (void)setRepresentedObject:(id)representedObject {
-    [super setRepresentedObject:representedObject];
-    
-    // Update the view, if already loaded.
-}
 
-- (IBAction)ChooseFile:(id)sender {
+- (IBAction)chooseFolder:(id)sender {
     NSOpenPanel* panel = [NSOpenPanel openPanel];
     [panel setAllowsMultipleSelection:NO];
     [panel setCanChooseDirectories:YES];
@@ -71,13 +77,13 @@ static BOOL stastic_4 = NO;
     [panel beginWithCompletionHandler:^(NSInteger result){
         if (result == NSFileHandlingPanelOKButton) {
             NSURL*  theDoc = [[panel URLs] objectAtIndex:0];
-            NSString *linkMap = [[theDoc path] stringByAppendingPathComponent:@"LinkMap.txt"];
+            NSString *linkMap = [[theDoc path] stringByAppendingPathComponent:LinkMapFile];
             self.ChooseLinkMapFileURL = [NSURL fileURLWithPath:linkMap];
             
-            NSString *ignore = [[theDoc path] stringByAppendingPathComponent:@"ignores.plist"];
+            NSString *ignore = [[theDoc path] stringByAppendingPathComponent:IgnoresFile];
             self.ignoreFileURL = [NSURL fileURLWithPath:ignore];
             
-            NSString *whitelist = [[theDoc path] stringByAppendingPathComponent:@"whitelist.plist"];
+            NSString *whitelist = [[theDoc path] stringByAppendingPathComponent:WhitelistFile];
             self.whitelistFileURL = [NSURL fileURLWithPath:whitelist];
             
             self.appFileURL = nil;
@@ -91,191 +97,34 @@ static BOOL stastic_4 = NO;
     }];
 }
 
-- (IBAction)ChooseAppFile:(id)sender {
-    NSOpenPanel* panel = [NSOpenPanel openPanel];
-    [panel setAllowsMultipleSelection:NO];
-    [panel setCanChooseDirectories:NO];
-    [panel setResolvesAliases:NO];
-    [panel setCanChooseFiles:YES];
+- (NSDictionary *)getLibraryClasss:(NSDictionary *)sizeMap {
+    NSArray <symbolModel *>*symbols = [sizeMap allValues];
     
-    [panel beginWithCompletionHandler:^(NSInteger result){
-        if (result == NSFileHandlingPanelOKButton) {
-            NSURL*  theDoc = [[panel URLs] objectAtIndex:0];
-            self.appFileURL = theDoc;
+    NSMutableDictionary *fi = [NSMutableDictionary dictionary];
+    for(symbolModel *symbol in symbols)
+    {
+        NSString *library = [[symbol.file componentsSeparatedByString:@"/"] lastObject];
+        NSRange range = [library rangeOfString:@".a("];
+        NSString *className = nil;
+        if (range.location != NSNotFound) {
+            className = [self safeSubString:library from:NSMaxRange(range)];
+            className = [self safeSubString:className to:className.length - 3];
+            library = [self safeSubString:library to:NSMaxRange(range) - 1];
+        } else {
+            className = [self safeSubString:library to:library.length - 2];
+            library = @"nativeCode";
         }
-    }];
+        NSMutableArray *arr = fi[library];
+        if (!arr) {
+            arr = [NSMutableArray array];
+            fi[library] = arr;
+        }
+        [arr addObject:className];
+    }
+    return fi;
 }
 
-- (IBAction)ChooseIgnoreFile:(id)sender {
-    NSOpenPanel* panel = [NSOpenPanel openPanel];
-    [panel setAllowsMultipleSelection:NO];
-    [panel setCanChooseDirectories:NO];
-    [panel setResolvesAliases:NO];
-    [panel setCanChooseFiles:YES];
-    
-    [panel beginWithCompletionHandler:^(NSInteger result){
-        if (result == NSFileHandlingPanelOKButton) {
-            NSURL*  theDoc = [[panel URLs] objectAtIndex:0];
-            NSLog(@"%@", theDoc);
-            self.ignoreFileURL = theDoc;
-        }
-    }];
-}
-
-- (void)analyStep1 {
-    if (!_ChooseLinkMapFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_ChooseLinkMapFileURL path] isDirectory:nil])
-    {
-        NSAlert *alert = [[NSAlert alloc]init];
-        alert.messageText = @"没有找到 LinkMap.txt";
-        [alert addButtonWithTitle:@"是的"];
-        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
-            
-        }];
-        return;
-    }
-    
-    NSError *error = nil;
-    NSString *content = [NSString stringWithContentsOfURL:_ChooseLinkMapFileURL encoding:NSMacOSRomanStringEncoding error:&error];
-    NSRange objsFileTagRange = [content rangeOfString:@"# Object files:"];
-    NSString *subObjsFileSymbolStr = [content substringFromIndex:objsFileTagRange.location + objsFileTagRange.length];
-    NSRange symbolsRange = [subObjsFileSymbolStr rangeOfString:@"# Symbols:"];
-    if ([content rangeOfString:@"# Path:"].length <= 0||objsFileTagRange.location == NSNotFound||symbolsRange.location == NSNotFound)
-    {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSAlert *alert = [[NSAlert alloc]init];
-            alert.messageText = @"文件格式不正确";
-            [alert addButtonWithTitle:@"是的"];
-            [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
-                
-            }];
-            
-        });
-        return;
-    }
-    
-    NSMutableDictionary <NSString *,symbolModel *>*sizeMap = [NSMutableDictionary new];
-    // 符号文件列表
-    NSArray *lines = [content componentsSeparatedByString:@"\n"];
-    
-    BOOL reachFiles = NO;
-    BOOL reachSymbols = NO;
-    BOOL reachSections = NO;
-    
-    for(NSString *line in lines)
-    {
-        if([line hasPrefix:@"#"])   //注释行
-        {
-            if ([line hasPrefix:@"# Path:"]) {
-                NSString *appPath = [line substringFromIndex:8];
-                _appFileURL = [NSURL URLWithString:appPath];
-             } else if([line hasPrefix:@"# Object files:"])
-                reachFiles = YES;
-            else if ([line hasPrefix:@"# Sections:"])
-                reachSections = YES;
-            else if ([line hasPrefix:@"# Symbols:"])
-                reachSymbols = YES;
-            else if ([line hasPrefix:@"# Dead Stripped Symbols:"]) {
-                reachFiles = NO;
-                reachSections = NO;
-                reachSymbols = NO;
-            }
-        }
-        else
-        {
-            if(reachFiles == YES && reachSections == NO && reachSymbols == NO)
-            {
-                NSRange range = [line rangeOfString:@"]"];
-                if(range.location != NSNotFound)
-                {
-                    if ([[line pathExtension] isEqualToString:@"o"] || ([[line lastPathComponent] rangeOfString:@".a("].location != NSNotFound && [[line lastPathComponent] rangeOfString:@"dummy.o)"].location == NSNotFound)) {
-                        symbolModel *symbol = [symbolModel new];
-                        symbol.file = [self safeSubString:line from:range.location+1];
-                        NSString *key = [self safeSubString:line to:range.location+1];
-                        sizeMap[key] = symbol;
-                    }
-                }
-            }
-            else if (reachFiles == YES &&reachSections == YES && reachSymbols == NO)
-            {
-            }
-            else if (reachFiles == YES && reachSections == YES && reachSymbols == YES)
-            {
-                NSArray <NSString *>*symbolsArray = [line componentsSeparatedByString:@"\t"];
-                if(symbolsArray.count == 3)
-                {
-                    //Address Size File Name
-                    NSString *fileKeyAndName = symbolsArray[2];
-                    NSUInteger size = strtoul([symbolsArray[1] UTF8String], nil, 16);
-                    
-                    NSRange range = [fileKeyAndName rangeOfString:@"]"];
-                    if(range.location != NSNotFound)
-                    {
-                        NSString *key = [self safeSubString:fileKeyAndName to:range.location+1];
-                        symbolModel *symbol = sizeMap[key];
-                        if(symbol)
-                        {
-                            symbol.size += size;
-                        }
-                        if ([fileKeyAndName rangeOfString:@"literal string"].location == NSNotFound) {
-                            //ivar
-                            range = [fileKeyAndName rangeOfString:@"_OBJC_IVAR_$_"];
-                            if(range.location != NSNotFound) {
-                                NSString *classIvar = [fileKeyAndName substringFromIndex:NSMaxRange(range)];
-                                range = [classIvar rangeOfString:@"."];
-                                NSString *classN = [classIvar substringToIndex:range.location];
-                                if (![self filterClass:classN]) {
-                                    NSMutableArray *arr = _allIvars[classN];
-                                    if (!arr) {
-                                        arr = [NSMutableArray array];
-                                        _allIvars[classN] = arr;
-                                    }
-                                    
-                                    NSString *ivar = [classIvar substringFromIndex:NSMaxRange(range)];
-                                    [arr addObject:ivar];
-                                }
-                            } else {
-                                
-                                range = [fileKeyAndName rangeOfString:@"]"];
-                                NSString *method = [self safeSubString:fileKeyAndName from:range.location+2];
-                                range = [method rangeOfString:@"-["];
-                                if (range.location == NSNotFound) {
-                                    range = [method rangeOfString:@"+["];
-                                }
-                                if (range.location != NSNotFound) {
-                                    method = [self safeSubString:method from:NSMaxRange(range)];
-                                    range = [method rangeOfString:@" "];
-                                    NSString *classN = [self safeSubString:method to:range.location];
-                                    if (![self filterClass:classN]) {
-                                        //func
-                                        NSMutableArray *arr = _allFuncs[classN];
-                                        if (!arr) {
-                                            arr = [NSMutableArray array];
-                                            _allFuncs[classN] = arr;
-                                        }
-                                        range = [method rangeOfString:@"_block_invoke"];
-                                        if (range.location == NSNotFound) {
-                                            range = [method rangeOfString:@"]"];
-                                            method = [self safeSubString:method to:range.location];
-                                            range = [method rangeOfString:classN];
-                                            method = [self safeSubString:method from:NSMaxRange(range) + 1];
-                                            if (![self filterMethod:method]) {
-                                                [arr addObject:method];
-                                            }
-                                        }
-                                        
-                                    }
-                                }
-                            }
-                            
-                        }
-                        
-                    }
-                }
-            }
-        }
-        
-    }
-    
+- (void)formatSize:(NSDictionary *)sizeMap {
     NSArray <symbolModel *>*symbols = [sizeMap allValues];
 
     NSUInteger totalSize = 0;
@@ -315,18 +164,13 @@ static BOOL stastic_4 = NO;
         [formatFi addObject:myCode];
     }
     if(stastic_0) {
-        self.data[@"大小统计"] = formatFi;
+        self.data[@"Size"] = formatFi;
         
         self.data[@"total"] = [NSString stringWithFormat:@"%.2fM",(totalSize/1024.0/1024.0)];
     }
-    for (NSString *key in _allFuncs.allKeys) {
-        if ([_allFuncs[key]count] == 0) {
-            [_allFuncs removeObjectForKey:key];
-        }
-    }
-    if(stastic_1) {
-        self.data[@"所有方法"] = _allFuncs;
-    }
+}
+
+- (void)ignoreGetterAndSetter {
     if (stastic_4) {
         for (NSString *key in _allFuncs.allKeys) {
             NSMutableArray *arr = _allFuncs[key];
@@ -340,11 +184,273 @@ static BOOL stastic_4 = NO;
             }
         }
     }
-    
 }
 
-- (IBAction)StartAnalyzer:(id)sender {
-    self.contentTextView.string = @"正在分析，可能需要等一等~~";
+- (void)getIvars:(NSString *)fileKeyAndName {
+    NSRange range = [fileKeyAndName rangeOfString:IvarFlag];
+    if(range.location != NSNotFound) {
+        NSString *classIvar = [fileKeyAndName substringFromIndex:NSMaxRange(range)];
+        range = [classIvar rangeOfString:@"."];
+        NSString *classN = [classIvar substringToIndex:range.location];
+        if (![self filterClass:classN]) {
+            NSMutableArray *arr = _allIvars[classN];
+            if (!arr) {
+                arr = [NSMutableArray array];
+                _allIvars[classN] = arr;
+            }
+            NSString *ivar = [classIvar substringFromIndex:NSMaxRange(range)];
+            [arr addObject:ivar];
+        }
+    }
+}
+
+- (void)getClassMethods:(NSString *)fileKeyAndName {
+    if([fileKeyAndName rangeOfString:IvarFlag].location != NSNotFound) {
+        return;
+    }
+    NSRange range = [fileKeyAndName rangeOfString:@"]"];
+    NSString *method = [self safeSubString:fileKeyAndName from:range.location+2];
+    range = [method rangeOfString:@"-["];
+    if (range.location == NSNotFound) {
+        range = [method rangeOfString:@"+["];
+    }
+    if (range.location != NSNotFound) {
+        method = [self safeSubString:method from:NSMaxRange(range)];
+        range = [method rangeOfString:@" "];
+        NSString *classN = [self safeSubString:method to:range.location];
+        if (![self filterClass:classN]) {
+            //func
+            NSMutableArray *arr = _allFuncs[classN];
+            if (!arr) {
+                arr = [NSMutableArray array];
+                _allFuncs[classN] = arr;
+            }
+            range = [method rangeOfString:BlockFlag];
+            if (range.location == NSNotFound) {
+                range = [method rangeOfString:@"]"];
+                method = [self safeSubString:method to:range.location];
+                range = [method rangeOfString:classN];
+                method = [self safeSubString:method from:NSMaxRange(range) + 1];
+                if (![self filterMethod:method]) {
+                    [arr addObject:method];
+                }
+            }
+        }
+    }
+}
+
+- (void)getObjects:(NSString *)line sizeMap:(NSMutableDictionary<NSString *,symbolModel *> *)sizeMap {
+    NSRange range = [line rangeOfString:@"]"];
+    if(range.location != NSNotFound)
+    {
+        if ([[line pathExtension] isEqualToString:@"o"] || ([[line lastPathComponent] rangeOfString:@".a("].location != NSNotFound && [[line lastPathComponent] rangeOfString:@"dummy.o)"].location == NSNotFound)) {
+            symbolModel *symbol = [symbolModel new];
+            symbol.file = [self safeSubString:line from:range.location+1];
+            NSString *key = [self safeSubString:line to:range.location+1];
+            sizeMap[key] = symbol;
+        }
+    }
+}
+
+- (NSString *)linkMapContent {
+    if (!_ChooseLinkMapFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_ChooseLinkMapFileURL path] isDirectory:nil])
+    {
+        NSAlert *alert = [[NSAlert alloc]init];
+        alert.messageText = @"LinkMap.txt not be found!";
+        [alert addButtonWithTitle:@"Sure"];
+        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
+            
+        }];
+        return nil;
+    }
+    
+    NSError *error = nil;
+    NSString *content = [NSString stringWithContentsOfURL:_ChooseLinkMapFileURL encoding:NSMacOSRomanStringEncoding error:&error];
+    NSRange objsFileTagRange = [content rangeOfString:ObjectFlag];
+    NSString *subObjsFileSymbolStr = [content substringFromIndex:objsFileTagRange.location + objsFileTagRange.length];
+    NSRange symbolsRange = [subObjsFileSymbolStr rangeOfString:SymbolsFlag];
+    if ([content rangeOfString:PathFlag].length <= 0||objsFileTagRange.location == NSNotFound||symbolsRange.location == NSNotFound)
+    {
+        NSAlert *alert = [[NSAlert alloc]init];
+        alert.messageText = @"Are you sure it is a Linkmap?";
+        [alert addButtonWithTitle:@"Sure"];
+        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
+            
+        }];
+        return nil;
+    }
+    return content;
+}
+
+- (void)analySymbols:(NSString *)line sizeMap:(NSMutableDictionary<NSString *,symbolModel *> *)sizeMap {
+    NSArray <NSString *>*symbolsArray = [line componentsSeparatedByString:@"\t"];
+    if(symbolsArray.count == 3)
+    {
+        //Address Size File Name
+        NSString *fileKeyAndName = symbolsArray[2];
+        NSUInteger size = strtoul([symbolsArray[1] UTF8String], nil, 16);
+        
+        NSRange range = [fileKeyAndName rangeOfString:@"]"];
+        if(range.location != NSNotFound)
+        {
+            NSString *key = [self safeSubString:fileKeyAndName to:range.location+1];
+            symbolModel *symbol = sizeMap[key];
+            if(symbol)
+            {
+                symbol.size += size;
+            }
+            if ([fileKeyAndName rangeOfString:@"literal string"].location == NSNotFound) {
+                //ivar
+                [self getIvars:fileKeyAndName];
+                [self getClassMethods:fileKeyAndName];
+            }
+            
+        }
+    }
+}
+
+- (NSMutableDictionary *)integrated:(NSDictionary *)funcs {
+    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+    for (NSString *key in _libaryClass.allKeys) {
+        NSMutableDictionary *dic1 = dic[key];
+        if (!dic1) {
+            dic1 = [NSMutableDictionary dictionary];
+            dic[key] = dic1;
+        }
+        NSArray *value = _libaryClass[key];
+        for (NSString *key1 in funcs.allKeys) {
+            if ([value containsObject:key1]) {
+                dic1[key1] = funcs[key1];
+            }
+        }
+    }
+    return dic;
+}
+
+- (void)analyStep1 {
+    NSString *content = [self linkMapContent];
+    if(!content)
+        return;
+    
+    NSMutableDictionary <NSString *,symbolModel *>*sizeMap = [NSMutableDictionary new];
+    // 符号文件列表
+    NSArray *lines = [content componentsSeparatedByString:@"\n"];
+    
+    BOOL reachFiles = NO;
+    BOOL reachSymbols = NO;
+    BOOL reachSections = NO;
+    
+    for(NSString *line in lines)
+    {
+        if([line hasPrefix:@"#"])   //注释行
+        {
+            if ([line hasPrefix:PathFlag]) {
+                NSString *appPath = [line substringFromIndex:8];
+                _appFileURL = [NSURL URLWithString:appPath];
+             } else if([line hasPrefix:ObjectFlag])
+                reachFiles = YES;
+            else if ([line hasPrefix:SectionsFlag])
+                reachSections = YES;
+            else if ([line hasPrefix:SymbolsFlag])
+                reachSymbols = YES;
+            else if ([line hasPrefix:@"# Dead Stripped Symbols:"]) {
+                reachFiles = NO;
+                reachSections = NO;
+                reachSymbols = NO;
+            }
+        }
+        else
+        {
+            if(reachFiles == YES && reachSections == NO && reachSymbols == NO)
+            {
+                [self getObjects:line sizeMap:sizeMap];
+            }
+            else if (reachFiles == YES &&reachSections == YES && reachSymbols == NO)
+            {
+            }
+            else if (reachFiles == YES && reachSections == YES && reachSymbols == YES)
+            {
+                [self analySymbols:line sizeMap:sizeMap];
+            }
+        }
+        
+    }
+    
+    [self formatSize:sizeMap];
+    for (NSString *key in _allFuncs.allKeys) {
+        if ([_allFuncs[key]count] == 0) {
+            [_allFuncs removeObjectForKey:key];
+        }
+    }
+    [self ignoreGetterAndSetter];
+    self.libaryClass = [self getLibraryClasss:sizeMap];
+    NSMutableDictionary * dic = [self integrated:_allFuncs];
+    if(stastic_1) {
+        self.data[@"All methods"] = dic;
+    }
+}
+
+
+- (void)analyStep2 {
+    if (!_appFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_appFileURL path] isDirectory:nil])
+    {
+        NSAlert *alert = [[NSAlert alloc]init];
+        alert.messageText = @"*.app not be found!";
+        [alert addButtonWithTitle:@"Sure"];
+        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
+            
+        }];
+        return;
+    }
+    NSString *path = [self.appFileURL path];
+    
+    NSArray* theArguments = [NSArray arrayWithObjects: @"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/otool", @"-V", @"-s", @"__DATA", @"__objc_selrefs" ,path,nil];
+    NSString *content = [self shell:theArguments];
+    NSArray *lines = [content componentsSeparatedByString:@"\n"];
+    NSMutableArray *usedMethods = [NSMutableArray array];
+    for (NSString *line in lines) {
+        NSRange range = [line rangeOfString:@"__objc_methname:"];
+        if (range.location != NSNotFound) {
+            NSString *method = [self safeSubString:line from:NSMaxRange(range)];
+            [usedMethods addObject:method];
+        }
+    }
+    
+    if(stastic_2) {
+        self.data[@"Used Methods"] = usedMethods;
+    }
+    NSMutableDictionary *unuseds = [NSMutableDictionary dictionary];
+    NSMutableDictionary *tempAll = [NSMutableDictionary dictionaryWithDictionary:_allFuncs];
+    for (NSString *key in tempAll.allKeys) {
+        NSArray *arr = tempAll[key];
+        for (NSString *method in arr) {
+            BOOL use = NO;
+            for (NSString *method1 in usedMethods) {
+                if ([method isEqualToString:method1]) {
+                    use = YES;
+                    break;
+                }
+            }
+            if (!use) {
+                NSMutableArray *arr = unuseds[key];
+                if (!arr) {
+                    arr = [NSMutableArray array];
+                    unuseds[key] = arr;
+                }
+                [arr addObject:method];
+            }
+        }
+    }
+    NSMutableDictionary * dic = [self integrated:unuseds];
+    
+    self.unuseds = unuseds;
+    if(stastic_3) {
+        self.data[@"Unused Methods"] = dic;
+    }
+}
+
+- (IBAction)startAnalyzer:(id)sender {
+    self.contentTextView.string = @"analyzing... ...";
     stastic_3 = YES;
     self.data = [NSMutableDictionary dictionary];
     self.allFuncs = [NSMutableDictionary dictionary];
@@ -359,7 +465,7 @@ static BOOL stastic_4 = NO;
     self.contentTextView.string = _result;
 }
 
-- (IBAction)inputFile:(id)sender {
+- (IBAction)exportFile:(id)sender {
     
     NSOpenPanel* panel = [NSOpenPanel openPanel];
     [panel setAllowsMultipleSelection:NO];
@@ -448,61 +554,6 @@ static BOOL stastic_4 = NO;
         NSLog(@"error line >>>>>%@", line);
     }
     return [line substringToIndex:index];
-}
-
-- (void)analyStep2 {
-    if (!_appFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_appFileURL path] isDirectory:nil])
-    {
-        NSAlert *alert = [[NSAlert alloc]init];
-        alert.messageText = @"没有找到 *.app";
-        [alert addButtonWithTitle:@"是的"];
-        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
-            
-        }];
-        return;
-    }
-    NSString *path = [self.appFileURL path];
-    
-    NSArray* theArguments = [NSArray arrayWithObjects: @"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/otool", @"-V", @"-s", @"__DATA", @"__objc_selrefs" ,path,nil];
-    NSString *content = [self shell:theArguments];
-    NSArray *lines = [content componentsSeparatedByString:@"\n"];
-    NSMutableArray *usedMethods = [NSMutableArray array];
-    for (NSString *line in lines) {
-        NSRange range = [line rangeOfString:@"__objc_methname:"];
-        if (range.location != NSNotFound) {
-            NSString *method = [self safeSubString:line from:NSMaxRange(range)];
-            [usedMethods addObject:method];
-        }
-    }
-    if(stastic_2) {
-        self.data[@"使用的方法"] = usedMethods;
-    }
-    NSMutableDictionary *unuseds = [NSMutableDictionary dictionary];
-    NSMutableDictionary *tempAll = [NSMutableDictionary dictionaryWithDictionary:_allFuncs];
-    for (NSString *key in tempAll.allKeys) {
-        NSArray *arr = tempAll[key];
-        for (NSString *method in arr) {
-            BOOL use = NO;
-            for (NSString *method1 in usedMethods) {
-                if ([method isEqualToString:method1]) {
-                    use = YES;
-                    break;
-                }
-            }
-            if (!use) {
-                NSMutableArray *arr = unuseds[key];
-                if (!arr) {
-                    arr = [NSMutableArray array];
-                    unuseds[key] = arr;
-                }
-                [arr addObject:method];
-            }
-        }
-    }
-    self.unuseds = unuseds;
-    if(stastic_3) {
-        self.data[@"可能未使用的方法"] = unuseds;
-    }
 }
 
 - (NSData *)toJSONData:(id)theData
