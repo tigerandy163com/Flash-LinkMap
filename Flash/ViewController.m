@@ -132,7 +132,7 @@ static BOOL stastic_4 = NO;
     for(symbolModel *symbol in symbols)
     {
         NSString *key = [[symbol.file componentsSeparatedByString:@"/"] lastObject];
-        NSRange range = [key rangeOfString:@".a("];
+        NSRange range = [key rangeOfString:@"("];
         if (range.location != NSNotFound) {
             key = [self safeSubString:key to:NSMaxRange(range) - 1];
         } else {
@@ -243,7 +243,7 @@ static BOOL stastic_4 = NO;
     NSRange range = [line rangeOfString:@"]"];
     if(range.location != NSNotFound)
     {
-        if ([[line pathExtension] isEqualToString:@"o"] || ([[line lastPathComponent] rangeOfString:@".a("].location != NSNotFound && [[line lastPathComponent] rangeOfString:@"dummy.o)"].location == NSNotFound)) {
+        if ([[line pathExtension] isEqualToString:@"o"] || [[line lastPathComponent] rangeOfString:@".o)"].location != NSNotFound) {
             symbolModel *symbol = [symbolModel new];
             symbol.file = [self safeSubString:line from:range.location+1];
             NSString *key = [self safeSubString:line to:range.location+1];
