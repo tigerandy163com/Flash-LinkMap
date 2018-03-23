@@ -45,6 +45,7 @@ static BOOL stastic_4 = NO;
 @property (nonatomic) NSDictionary *ignores;
 @property (nonatomic) NSArray *whitelist;
 @property (nonatomic) NSDictionary *libaryClass;
+@property (nonatomic) BOOL analyzing;
 
 @end
 
@@ -69,6 +70,9 @@ static BOOL stastic_4 = NO;
 }
 
 - (IBAction)chooseFolder:(id)sender {
+    if (self.analyzing) {
+        return;
+    }
     NSOpenPanel* panel = [NSOpenPanel openPanel];
     [panel setAllowsMultipleSelection:NO];
     [panel setCanChooseDirectories:YES];
@@ -464,7 +468,11 @@ static BOOL stastic_4 = NO;
 }
 
 - (IBAction)startAnalyzer:(id)sender {
-    [self appendPrint:@"analyzing... ..."];
+    if (self.analyzing) {
+        return;
+    }
+    self.analyzing = YES;
+    self.contentTextView.string = @"begin analyzing... ...";
     stastic_3 = YES;
     self.data = [NSMutableDictionary dictionary];
     self.allFuncs = [NSMutableDictionary dictionary];
@@ -483,12 +491,15 @@ static BOOL stastic_4 = NO;
         [self appendPrint:@"analyzing app done... ..."];
         NSData *data = [self toJSONData:self.data];
         self.result = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        [self appendPrint:[NSString stringWithFormat:@"\n\r-------------------------------\n****** Result(JSON format)******\n-------------------------------\n\r%@",self.result]];
+        [self appendPrint:[NSString stringWithFormat:@"\n\r-------------------------------\n\r****** Result with JSON format******\n\r-------------------------------\n\r%@",self.result]];
+        self.analyzing = NO;
     });
 }
 
 - (IBAction)exportFile:(id)sender {
-    
+    if (self.analyzing) {
+        return;
+    }
     NSOpenPanel* panel = [NSOpenPanel openPanel];
     [panel setAllowsMultipleSelection:NO];
     [panel setCanChooseDirectories:YES];
