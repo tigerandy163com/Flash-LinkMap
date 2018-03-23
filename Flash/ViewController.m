@@ -27,12 +27,13 @@ static BOOL stastic_4 = NO;
 
 @interface ViewController()
 
-@property (weak) IBOutlet NSScrollView *contentView;//分析的内容
+@property (weak) IBOutlet NSScrollView *contentView;//print result
 @property (unsafe_unretained) IBOutlet NSTextView *contentTextView;
+@property (weak) IBOutlet NSTextField *pathLabel;
 
 @property (nonatomic,strong)NSURL *ChooseLinkMapFileURL;
 
-@property (nonatomic,strong)NSURL *appFileURL;
+@property (nonatomic,strong)NSURL *appFileURL; //get file url from linkmap file
 @property (nonatomic,strong)NSURL *ignoreFileURL;
 @property (nonatomic,strong)NSURL *whitelistFileURL;
 
@@ -89,6 +90,9 @@ static BOOL stastic_4 = NO;
             self.appFileURL = nil;
 
             if (!_ChooseLinkMapFileURL|| ![[NSFileManager defaultManager] fileExistsAtPath:[_ChooseLinkMapFileURL path] isDirectory:nil]){
+                _pathLabel.stringValue = @"LinkMap.txt file not exist";
+            } else {
+                _pathLabel.stringValue = linkMap;
             }
             if (!_ignoreFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_ignoreFileURL path] isDirectory:nil]){
             }
@@ -449,20 +453,38 @@ static BOOL stastic_4 = NO;
     }
 }
 
+- (void)appendPrint:(NSString *)string {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSString *cur = self.contentTextView.string;
+        if (string.length) {
+            cur = [cur stringByAppendingString:[NSString stringWithFormat:@"\n\r%@",string]];
+        }
+        self.contentTextView.string = cur;
+    });
+}
+
 - (IBAction)startAnalyzer:(id)sender {
-    self.contentTextView.string = @"analyzing... ...";
+    [self appendPrint:@"analyzing... ..."];
     stastic_3 = YES;
     self.data = [NSMutableDictionary dictionary];
     self.allFuncs = [NSMutableDictionary dictionary];
     self.allIvars = [NSMutableDictionary dictionary];
     self.unuseds = [NSMutableDictionary dictionary];
+    [self appendPrint:@"loading ignores config... ..."];
     [self loadIgnores];
+    [self appendPrint:@"loading whitelist config... ..."];
     [self loadWitelist];
-    [self analyStep1];
-    [self analyStep2];
-    NSData *data = [self toJSONData:self.data];
-    self.result = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    self.contentTextView.string = _result;
+    dispatch_async (dispatch_get_global_queue (DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [self appendPrint:@"analyzing linkmap... ..."];
+        [self analyStep1];
+        [self appendPrint:@"analyzing linkmap done... ..."];
+        [self appendPrint:@"analyzing app... ..."];
+        [self analyStep2];
+        [self appendPrint:@"analyzing app done... ..."];
+        NSData *data = [self toJSONData:self.data];
+        self.result = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        [self appendPrint:[NSString stringWithFormat:@"\n\r-------------------------------\n****** Result(JSON format)******\n-------------------------------\n\r%@",self.result]];
+    });
 }
 
 - (IBAction)exportFile:(id)sender {

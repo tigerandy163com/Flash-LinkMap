@@ -785,8 +785,16 @@
                                 </connections>
                             </button>
                             <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="oXg-RO-Ehl">
-                                <rect key="frame" x="28" y="383" width="158" height="17"/>
-                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Options:（Need restart）" id="Z6D-kW-UeS">
+                                <rect key="frame" x="28" y="383" width="162" height="17"/>
+                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Options:（Need Restart）" id="Z6D-kW-UeS">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                            <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="cTE-Ct-ObO">
+                                <rect key="frame" x="102" y="417" width="189" height="17"/>
+                                <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" placeholderString="LinkMap.txt" id="dBD-2K-RG3">
                                     <font key="font" metaFont="system"/>
                                     <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                     <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
@@ -794,6 +802,7 @@
                             </textField>
                         </subviews>
                         <constraints>
+                            <constraint firstItem="cTE-Ct-ObO" firstAttribute="centerY" secondItem="kQk-9Y-S7x" secondAttribute="centerY" id="2Nj-56-0k6"/>
                             <constraint firstItem="Cif-hb-7Xn" firstAttribute="centerY" secondItem="5bE-wy-L23" secondAttribute="centerY" id="39M-f6-Zk1"/>
                             <constraint firstItem="Cif-hb-7Xn" firstAttribute="leading" secondItem="ZsF-Dt-umf" secondAttribute="trailing" constant="10" id="5cX-4e-1BL"/>
                             <constraint firstItem="oXg-RO-Ehl" firstAttribute="leading" secondItem="m2S-Jp-Qdl" secondAttribute="leading" constant="30" id="6CC-jN-deg"/>
@@ -804,6 +813,7 @@
                             <constraint firstItem="euu-V1-Wfk" firstAttribute="leading" secondItem="ClY-B1-4gS" secondAttribute="trailing" constant="20" id="F09-xP-ldQ"/>
                             <constraint firstItem="5bE-wy-L23" firstAttribute="top" secondItem="m2S-Jp-Qdl" secondAttribute="top" constant="80" id="IJn-OH-Hw9"/>
                             <constraint firstItem="euu-V1-Wfk" firstAttribute="centerY" secondItem="ClY-B1-4gS" secondAttribute="centerY" id="K8A-0d-dYN"/>
+                            <constraint firstItem="ClY-B1-4gS" firstAttribute="leading" secondItem="cTE-Ct-ObO" secondAttribute="trailing" constant="8" id="Ojg-Hw-GCT"/>
                             <constraint firstItem="kQk-9Y-S7x" firstAttribute="leading" secondItem="m2S-Jp-Qdl" secondAttribute="leading" constant="25" id="PzV-gu-7ju"/>
                             <constraint firstItem="oXg-RO-Ehl" firstAttribute="top" secondItem="kQk-9Y-S7x" secondAttribute="bottom" constant="15" id="QRy-2d-Qja"/>
                             <constraint firstItem="kQk-9Y-S7x" firstAttribute="top" secondItem="m2S-Jp-Qdl" secondAttribute="top" constant="15" id="QXn-gL-ZAu"/>
@@ -811,6 +821,7 @@
                             <constraint firstItem="ygd-PB-Qak" firstAttribute="leading" secondItem="Cif-hb-7Xn" secondAttribute="trailing" constant="10" id="YGD-9e-vsK"/>
                             <constraint firstItem="ClY-B1-4gS" firstAttribute="centerY" secondItem="kQk-9Y-S7x" secondAttribute="centerY" id="bVo-TJ-H9C"/>
                             <constraint firstItem="mDq-b1-YHX" firstAttribute="leading" secondItem="m2S-Jp-Qdl" secondAttribute="leading" constant="25" id="e21-xr-H4g"/>
+                            <constraint firstItem="cTE-Ct-ObO" firstAttribute="leading" secondItem="kQk-9Y-S7x" secondAttribute="trailing" constant="19" id="gLG-Gq-kHl"/>
                             <constraint firstItem="ZsF-Dt-umf" firstAttribute="centerY" secondItem="5bE-wy-L23" secondAttribute="centerY" id="klC-8X-PhC"/>
                             <constraint firstAttribute="trailing" secondItem="mDq-b1-YHX" secondAttribute="trailing" constant="25" id="lyY-Wl-u2C"/>
                             <constraint firstItem="mDq-b1-YHX" firstAttribute="top" secondItem="ClY-B1-4gS" secondAttribute="bottom" constant="80" id="nNM-oN-iar"/>
@@ -819,6 +830,7 @@
                     <connections>
                         <outlet property="contentTextView" destination="eFU-uR-nOL" id="SiC-AH-tEO"/>
                         <outlet property="contentView" destination="mDq-b1-YHX" id="fmk-ph-B2w"/>
+                        <outlet property="pathLabel" destination="cTE-Ct-ObO" id="9lt-gL-1Qt"/>
                     </connections>
                 </viewController>
                 <customObject id="rPt-NT-nkU" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>
