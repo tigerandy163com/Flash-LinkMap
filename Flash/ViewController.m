@@ -93,12 +93,12 @@ static BOOL stastic_4 = NO;
             
             self.appFileURL = nil;
 
-            if (!_ChooseLinkMapFileURL|| ![[NSFileManager defaultManager] fileExistsAtPath:[_ChooseLinkMapFileURL path] isDirectory:nil]){
-                _pathLabel.stringValue = @"LinkMap.txt file not exist";
+            if (!self->_ChooseLinkMapFileURL|| ![[NSFileManager defaultManager] fileExistsAtPath:[self->_ChooseLinkMapFileURL path] isDirectory:nil]){
+                self->_pathLabel.stringValue = @"LinkMap.txt file not exist";
             } else {
-                _pathLabel.stringValue = linkMap;
+                self->_pathLabel.stringValue = linkMap;
             }
-            if (!_ignoreFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_ignoreFileURL path] isDirectory:nil]){
+            if (!self->_ignoreFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[self->_ignoreFileURL path] isDirectory:nil]){
             }
    
         }
@@ -184,11 +184,13 @@ static BOOL stastic_4 = NO;
             NSMutableArray *arr = _allFuncs[key];
             NSArray *ivars = _allIvars[key];
             for (NSString *ivar in ivars) {
-                NSString *getIvar = [ivar substringFromIndex:1];
-                NSString *temp = [NSString stringWithFormat:@"%@%@",[[getIvar substringToIndex:1]uppercaseString],[getIvar substringFromIndex:1]];
-                NSString *setIvar = [NSString stringWithFormat:@"set%@:",temp];
-                [arr removeObject:getIvar];
-                [arr removeObject:setIvar];
+                if ([ivar hasPrefix:@"_"]) {
+                    NSString *getIvar = [ivar substringFromIndex:1];
+                    NSString *temp = [NSString stringWithFormat:@"%@%@",[[getIvar substringToIndex:1]uppercaseString],[getIvar substringFromIndex:1]];
+                    NSString *setIvar = [NSString stringWithFormat:@"set%@:",temp];
+                    [arr removeObject:getIvar];
+                    [arr removeObject:setIvar];
+                }
             }
         }
     }
@@ -332,7 +334,13 @@ static BOOL stastic_4 = NO;
             }
         }
     }
-    return dic;
+    NSMutableDictionary *ret = [NSMutableDictionary dictionary];
+    for (NSString *aKey in dic.allKeys) {
+        if ([dic[aKey] allValues].count > 0) {
+            ret[aKey] = dic[aKey];
+        }
+    }
+    return ret;
 }
 
 - (void)analyStep1 {
