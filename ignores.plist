@@ -6,12 +6,9 @@
 	<array>
 		<string>.cxx_destruct</string>
 		<string>numberOfSectionsInCollectionView:</string>
-		<string>collectionView:didSelectItemAtIndexPath:</string>
-		<string>collectionView:shouldSelectItemAtIndexPath:</string>
-		<string>collectionView:layout:sizeForItemAtIndexPath:</string>
-		<string>collectionView:layout:referenceSizeForFooterInSection:</string>
-		<string>collectionView:viewForSupplementaryElementOfKind:atIndexPath:</string>
+		<string>collectionView:*</string>
 		<string>tableView:*</string>
+		<string>speechSynthesizer:*</string>
 	</array>
 	<key>class</key>
 	<array>

@@ -457,12 +457,35 @@ static BOOL stastic_4 = NO;
             }
         }
     }
+    [self filterUnused:unuseds bySameNameNibInApp:path];
     NSMutableDictionary * dic = [self integrated:unuseds];
-    
     self.unuseds = unuseds;
     if(stastic_3) {
         self.data[@"Unused Methods"] = dic;
     }
+}
+
+- (void)filterUnused:(NSMutableDictionary *)unused bySameNameNibInApp:(NSString *)path {
+    path = [path stringByDeletingLastPathComponent];
+    for (NSString *cls in unused.allKeys) {
+        NSMutableArray *result = [NSMutableArray array];
+        for (NSString *method in unused[cls]) {
+            NSString *nib = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.nib", cls]];
+            if ([[NSFileManager defaultManager] fileExistsAtPath:nib]) {
+                NSArray* theArguments = [NSArray arrayWithObjects: @"/usr/bin/grep", method,nib,nil];
+                NSString *content = [self shell:theArguments];
+                if (!content.length) {
+                    [result addObject:method];
+                }
+             }
+        }
+        if (result.count) {
+            unused[cls] = result;
+        } else {
+            [unused removeObjectForKey:cls];
+        }
+    }
+   
 }
 
 - (void)appendPrint:(NSString *)string {
