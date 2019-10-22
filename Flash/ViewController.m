@@ -468,22 +468,19 @@ static BOOL stastic_4 = NO;
 - (void)filterUnused:(NSMutableDictionary *)unused bySameNameNibInApp:(NSString *)path {
     path = [path stringByDeletingLastPathComponent];
     for (NSString *cls in unused.allKeys) {
-        NSMutableArray *result = [NSMutableArray array];
+        NSMutableArray *result = [NSMutableArray arrayWithArray:unused[cls]];
         for (NSString *method in unused[cls]) {
             NSString *nib = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.nib", cls]];
             if ([[NSFileManager defaultManager] fileExistsAtPath:nib]) {
                 NSArray* theArguments = [NSArray arrayWithObjects: @"/usr/bin/grep", method,nib,nil];
                 NSString *content = [self shell:theArguments];
-                if (!content.length) {
-                    [result addObject:method];
+                if (content.length) {
+                    //method is used in xib
+                    [result removeObject:method];
                 }
              }
         }
-        if (result.count) {
-            unused[cls] = result;
-        } else {
-            [unused removeObjectForKey:cls];
-        }
+        unused[cls] = result;
     }
    
 }
