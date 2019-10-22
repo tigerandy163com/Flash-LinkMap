@@ -481,6 +481,9 @@ static BOOL stastic_4 = NO;
              }
         }
         unused[cls] = result;
+        if (result.count == 0) {
+            [unused removeObjectForKey:cls];
+        }
     }
    
 }
