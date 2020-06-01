@@ -265,12 +265,14 @@ static BOOL stastic_4 = NO;
 - (NSString *)linkMapContent {
     if (!_ChooseLinkMapFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_ChooseLinkMapFileURL path] isDirectory:nil])
     {
-        NSAlert *alert = [[NSAlert alloc]init];
-        alert.messageText = @"LinkMap.txt not be found!";
-        [alert addButtonWithTitle:@"Sure"];
-        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
-            
-        }];
+		dispatch_async(dispatch_get_main_queue(), ^{
+			NSAlert *alert = [[NSAlert alloc]init];
+			alert.messageText = @"LinkMap.txt not be found!";
+			[alert addButtonWithTitle:@"Sure"];
+			[alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
+				
+			}];
+		});
         return nil;
     }
     
@@ -281,12 +283,14 @@ static BOOL stastic_4 = NO;
     NSRange symbolsRange = [subObjsFileSymbolStr rangeOfString:SymbolsFlag];
     if ([content rangeOfString:PathFlag].length <= 0||objsFileTagRange.location == NSNotFound||symbolsRange.location == NSNotFound)
     {
-        NSAlert *alert = [[NSAlert alloc]init];
-        alert.messageText = @"Are you sure it is a Linkmap?";
-        [alert addButtonWithTitle:@"Sure"];
-        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
-            
-        }];
+		dispatch_async(dispatch_get_main_queue(), ^{
+			NSAlert *alert = [[NSAlert alloc]init];
+			alert.messageText = @"Are you sure it is a Linkmap?";
+			[alert addButtonWithTitle:@"Sure"];
+			[alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
+				
+			}];
+		});
         return nil;
     }
     return content;
@@ -410,12 +414,15 @@ static BOOL stastic_4 = NO;
 - (void)analyStep2 {
     if (!_appFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_appFileURL path] isDirectory:nil])
     {
-        NSAlert *alert = [[NSAlert alloc]init];
-        alert.messageText = @"*.app not be found!";
-        [alert addButtonWithTitle:@"Sure"];
-        [alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
-            
-        }];
+		dispatch_async(dispatch_get_main_queue(), ^{
+			NSAlert *alert = [[NSAlert alloc]init];
+			alert.messageText = @"*.app not be found!";
+			[alert addButtonWithTitle:@"Sure"];
+			[alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
+				
+			}];
+		}) ;
+
         return;
     }
     NSString *path = [self.appFileURL path];
