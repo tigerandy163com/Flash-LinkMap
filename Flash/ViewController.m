@@ -33,7 +33,7 @@ static BOOL stastic_4 = NO;
 
 @property (nonatomic,strong)NSURL *ChooseLinkMapFileURL;
 
-@property (nonatomic,strong)NSURL *appFileURL; //get file url from linkmap file
+@property (nonatomic,copy)NSString *appFilePath; //get file url from linkmap file
 @property (nonatomic,strong)NSURL *ignoreFileURL;
 @property (nonatomic,strong)NSURL *whitelistFileURL;
 
@@ -91,7 +91,7 @@ static BOOL stastic_4 = NO;
             NSString *whitelist = [[theDoc path] stringByAppendingPathComponent:WhitelistFile];
             self.whitelistFileURL = [NSURL fileURLWithPath:whitelist];
             
-            self.appFileURL = nil;
+            self.appFilePath = nil;
 
             if (!self->_ChooseLinkMapFileURL|| ![[NSFileManager defaultManager] fileExistsAtPath:[self->_ChooseLinkMapFileURL path] isDirectory:nil]){
                 self->_pathLabel.stringValue = @"LinkMap.txt file not exist";
@@ -276,8 +276,9 @@ static BOOL stastic_4 = NO;
         return nil;
     }
     
+	NSData *data = [NSData dataWithContentsOfURL:_ChooseLinkMapFileURL];
     NSError *error = nil;
-    NSString *content = [NSString stringWithContentsOfURL:_ChooseLinkMapFileURL encoding:NSMacOSRomanStringEncoding error:&error];
+    NSString *content = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
     NSRange objsFileTagRange = [content rangeOfString:ObjectFlag];
     NSString *subObjsFileSymbolStr = [content substringFromIndex:objsFileTagRange.location + objsFileTagRange.length];
     NSRange symbolsRange = [subObjsFileSymbolStr rangeOfString:SymbolsFlag];
@@ -366,7 +367,7 @@ static BOOL stastic_4 = NO;
         {
             if ([line hasPrefix:PathFlag]) {
                 NSString *appPath = [line substringFromIndex:8];
-                _appFileURL = [NSURL URLWithString:appPath];
+                _appFilePath = appPath;
              } else if([line hasPrefix:ObjectFlag])
                 reachFiles = YES;
             else if ([line hasPrefix:SectionsFlag])
@@ -412,11 +413,11 @@ static BOOL stastic_4 = NO;
 
 
 - (void)analyStep2 {
-    if (!_appFileURL || ![[NSFileManager defaultManager] fileExistsAtPath:[_appFileURL path] isDirectory:nil])
+    if (!_appFilePath)
     {
 		dispatch_async(dispatch_get_main_queue(), ^{
 			NSAlert *alert = [[NSAlert alloc]init];
-			alert.messageText = @"*.app not be found!";
+			alert.messageText = @"*.app not be found! i cannot analyze unused methods!";
 			[alert addButtonWithTitle:@"Sure"];
 			[alert beginSheetModalForWindow:[NSApplication sharedApplication].windows[0] completionHandler:^(NSModalResponse returnCode) {
 				
@@ -425,7 +426,7 @@ static BOOL stastic_4 = NO;
 
         return;
     }
-    NSString *path = [self.appFileURL path];
+    NSString *path = _appFilePath;
     
     NSArray* theArguments = [NSArray arrayWithObjects: @"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/otool", @"-V", @"-s", @"__DATA", @"__objc_selrefs" ,path,nil];
     NSString *content = [self shell:theArguments];
@@ -520,6 +521,9 @@ static BOOL stastic_4 = NO;
     [self loadIgnores];
     [self appendPrint:@"loading whitelist config... ..."];
     [self loadWitelist];
+	if (self.whitelist.count == 0) {
+		 [self appendPrint:@"empty whitelist, it may take longer"];
+	}
     dispatch_async (dispatch_get_global_queue (DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         [self appendPrint:@"analyzing linkmap... ..."];
         [self analyStep1];
